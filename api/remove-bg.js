@@ -3,40 +3,50 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Solo POST' });
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  if (req.method!== 'POST') {
+    return res.status(405).json({ error: 'Solo POST' });
+  }
 
   try {
     const { image } = req.body;
-    if (!image) return res.status(400).json({ error: 'No image' });
 
-    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
-    const buffer = Buffer.from(base64Data, 'base64');
+    if (!image) {
+      return res.status(400).json({ error: 'No llego imagen' });
+    }
+
+    const HF_TOKEN = process.env.HF_TOKEN;
+
+    if (!HF_TOKEN) {
+      return res.status(500).json({ error: 'Falta HF_TOKEN en Vercel' });
+    }
+
+    const buffer = Buffer.from(image, 'base64');
 
     const hfResponse = await fetch('https://api-inference.huggingface.co/models/briaai/RMBG-1.4', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.HF_TOKEN}`,
-        'Content-Type': 'application/octet-stream',
+        'Authorization': `Bearer ${HF_TOKEN}`
       },
-      body: buffer,
+      body: buffer
     });
 
     if (!hfResponse.ok) {
-      const err = await hfResponse.text();
-      console.log('HF Error:', err);
-      return res.status(500).json({ error: 'Error HF: ' + err });
+      const errorText = await hfResponse.text();
+      return res.status(500).json({ error: `HF fallo: ${errorText.substring(0, 300)}` });
     }
 
-    const resultBuffer = await hfResponse.arrayBuffer();
-    const resultBase64 = Buffer.from(resultBuffer).toString('base64');
-    
-    return res.status(200).json({ 
-      image: `data:image/png;base64,${resultBase64}` 
+    const arrayBuffer = await hfResponse.arrayBuffer();
+    const base64Result = Buffer.from(arrayBuffer).toString('base64');
+
+    return res.status(200).json({
+      image: `data:image/png;base64,${base64Result}`
     });
 
   } catch (e) {
-    console.log(e);
     return res.status(500).json({ error: e.message });
   }
 }
