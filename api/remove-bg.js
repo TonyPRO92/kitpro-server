@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     const { image } = req.body;
     if (!image) return res.status(400).json({ error: 'Falta imagen' });
     const HF_TOKEN = process.env.HF_TOKEN;
-    const base64Data = image.replace(/^data:image\/\w+;base64,[STRIPPED], '');
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
 
     const response = await fetch('https://api-inference.huggingface.co/models/briaai/BRIA-RMBG-2.0', {
